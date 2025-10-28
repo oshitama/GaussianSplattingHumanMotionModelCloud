@@ -30,6 +30,11 @@ VM_BEGIN_NS
   */
 template<class T>
 class Vector4 : public Tuple4<T> {
+public:
+    using Tuple4<T>::x;
+    using Tuple4<T>::y;
+    using Tuple4<T>::z;
+    using Tuple4<T>::w;
 /*
  * $Log: Vector4.h,v $
  * Revision 1.3  1999/10/06  02:52:46  hiranabe

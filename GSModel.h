@@ -180,17 +180,24 @@ private:
     // ダンプ
     void DumpModel(const std::string& dir) const;
     struct StepLog {
-        int   step;
-        int   splat_id;
-        float t;
-        float dist_goal;
-        float stopability;
-        float v_ref;
-        float v_used;
-        float dist_model;   // cur → モデル推奨(next_pose) の距離
-        float r_model;      // その一歩の補間率
-        float r_goal;       // ゴール側一歩の補間率
-        float alpha;        // p1/p2 の混合係数
+        int         step = 0;
+        int         splat_id = -1;
+        float       t_sec = 0.0f;
+        float       dist_goal = 0.0f;
+        float       delta_goal = 0.0f;
+        float       alpha = 0.0f;
+        std::string alpha_mode;
+        float       step_norm = 0.0f;
+        float       dt = 0.0f;
+        float       v_ref = 0.0f;
+        float       v_min = 0.0f;
+        float       v_max = 0.0f;
+        float       used_speed = 0.0f;
+        float       v_floor = 0.0f;
+        std::string events;
+        float       stopability = 0.0f;
+        float       r_model = 0.0f;
+        float       r_goal = 0.0f;
     };
     void DumpGenerateTrace(const std::string& dir,
                            const std::vector<StepLog>& logs,

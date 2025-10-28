@@ -4,7 +4,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#if defined(_WIN32)
 #include <direct.h>
+#endif
 
 static inline void ensure_dir(const std::string& d) {
 #if defined(_WIN32)
@@ -49,17 +51,46 @@ void GSModel::DumpGenerateTrace(const std::string& dir,
 {
     ensure_dir(dir);
     {
-//        std::ofstream ofs(dir + "/gen_trace.csv");
-//        ofs << "step,t,nearest_splat,stopability,v_ref,v_used,dist_goal\n";
+        auto escape_csv = [](const std::string& v) {
+            bool need_wrap = false;
+            std::string out;
+            out.reserve(v.size());
+            for (char ch : v) {
+                if (ch == '"') {
+                    out.push_back('"');
+                    out.push_back('"');
+                    need_wrap = true;
+                } else {
+                    if (ch == ',' || ch == '\n') {
+                        need_wrap = true;
+                    }
+                    out.push_back(ch);
+                }
+            }
+            if (need_wrap) {
+                return std::string("\"") + out + "\"";
+            }
+            return out;
+        };
+
         std::ofstream ofs(dir + "/gen_trace.csv");
-        ofs << "step,t,nearest_splat,stopability,v_ref,v_used,dist_goal,dist_model,r_model,r_goal,alpha\n";
+        ofs << "step,t_sec,dist_goal,delta_goal,alpha,alpha_mode,step_norm,dt,splat_id,v_ref,v_min,v_max,used_speed,v_floor,events" << '\n';
         for (const auto& L : logs) {
-            ofs << L.step << "," << L.t << "," << L.splat_id << ","
-//                << L.stopability << "," << L.v_ref << "," << L.v_used << ","
-//                << L.dist_goal << "\n";
-                << L.stopability << "," << L.v_ref << "," << L.v_used << ","
-                << L.dist_goal << "," << L.dist_model << ","
-                << L.r_model << "," << L.r_goal << "," << L.alpha << "\n";
+            ofs << L.step << ','
+                << L.t_sec << ','
+                << L.dist_goal << ','
+                << L.delta_goal << ','
+                << L.alpha << ','
+                << escape_csv(L.alpha_mode) << ','
+                << L.step_norm << ','
+                << L.dt << ','
+                << L.splat_id << ','
+                << L.v_ref << ','
+                << L.v_min << ','
+                << L.v_max << ','
+                << L.used_speed << ','
+                << L.v_floor << ','
+                << escape_csv(L.events) << '\n';
         }
     }
     {
