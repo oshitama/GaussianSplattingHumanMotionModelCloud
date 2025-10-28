@@ -30,6 +30,10 @@ VM_BEGIN_NS
   */
 template<class T>
 class Point3 : public Tuple3<T> {
+public:
+    using Tuple3<T>::x;
+    using Tuple3<T>::y;
+    using Tuple3<T>::z;
 /*
  * $Log: Point3.h,v $
  * Revision 1.4  1999/10/06  02:52:46  hiranabe

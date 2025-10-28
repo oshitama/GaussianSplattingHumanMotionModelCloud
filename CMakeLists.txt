@@ -4,6 +4,10 @@ project(GSHeadless LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(-fpermissive)
+endif()
+
 # ★ ビルド生成物はプロジェクト直下に出す
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -19,7 +23,7 @@ include_directories(
 # あなたのソース（必要なら追加ください）
 set(GS_SOURCES
   GSModel.h GSModel_core.cpp GSModel_generate.cpp GSModel_train.cpp GSModel_dump.cpp
-  GSModelTest.h GSModelTest.cpp GSModelTestMain.cpp
+  GSModelTest.h GSModelTest.cpp
   HumanBody.h HumanBody.cpp
   SimpleHuman.h SimpleHuman.cpp
   BVH.h BVH.cpp
@@ -28,7 +32,7 @@ set(GS_SOURCES
 add_library(gsmodel ${GS_SOURCES})
 target_compile_definitions(gsmodel PRIVATE SH_HEADLESS=1)
 
-add_executable(app_headless main_headless.cpp)
+add_executable(app_headless GSModelTestMain.cpp)
 target_link_libraries(app_headless PRIVATE gsmodel)
 
 # デフォルトはRelease

@@ -8,14 +8,17 @@
 
 // ヘッダファイルのインクルード
 #include "SimpleHuman.h"
-#include "bvh.h"
+#include "BVH.h"
 
-// OpenGL + GLUT を使用
-#include <gl/glut.h>
+// OpenGL + GLUT を使用（ヘッドレス時は無効化）
+#ifndef SH_HEADLESS
+#include <GL/glut.h>
+#endif
 
 // 標準算術関数・定数の定義
 #define  _USE_MATH_DEFINES
 #include <math.h>
+#include <cstring>
 
 using namespace  std;
 

@@ -12,6 +12,7 @@
 // ライブラリ・クラス定義の読み込み
 #include "SimpleHuman.h"
 #include "HumanBody.h"
+#include <cstring>
 
 using namespace  std;
 

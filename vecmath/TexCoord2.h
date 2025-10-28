@@ -29,6 +29,9 @@ VM_BEGIN_NS
   */
 template<class T>
 class TexCoord2 : public Tuple2<T> {
+public:
+    using Tuple2<T>::x;
+    using Tuple2<T>::y;
 /*
  * $Log: TexCoord2.h,v $
  * Revision 1.3  1999/10/06  02:52:46  hiranabe
