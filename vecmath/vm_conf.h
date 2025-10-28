@@ -84,6 +84,19 @@
 #undef VM_USE_STD_NAMESPACE
 #endif
 
+// Modern toolchains provide standard namespace-aware headers; enable them by default.
+#ifndef VM_INCLUDE_NAMESPACE
+#define VM_INCLUDE_NAMESPACE
+#endif
+
+#ifndef VM_USE_STD_NAMESPACE
+#define VM_USE_STD_NAMESPACE
+#endif
+
+#ifndef VM_USE_STRINGSTREAM
+#define VM_USE_STRINGSTREAM
+#endif
+
 
 #ifdef _MSC_VER
 #  ifndef VM_USE_STD_NAMESPACE
@@ -125,7 +138,7 @@
 #else
 #  define VM_MATH_STD VM_STD
 #  define VM_STRING_STD VM_STD
-#  define VM_IOSTREAM_STD
+#  define VM_IOSTREAM_STD VM_STD
 #endif
 
 

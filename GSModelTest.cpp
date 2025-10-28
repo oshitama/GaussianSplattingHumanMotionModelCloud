@@ -45,9 +45,9 @@ void  LoadSampleMotions( std::vector< const Motion * > & sample_motions, const H
 {
 	// サンプル動作の情報（格闘動作）
 	const int  num_sample_motions = 1;
-	const char *  sample_motion_files[ num_sample_motions ] = {
-		"motion_rikiya\\I25.bvh" // パンチ
-	};
+        const char *  sample_motion_files[ num_sample_motions ] = {
+                "motion_rikiya/I25.bvh" // パンチ
+        };
 	const float  sample_motion_keytimes[ num_sample_motions ][ 2 ] = {
 		{ 0.0f, 1.75f } // パンチ
 	};
