@@ -14,8 +14,6 @@
    - `run.log` と `gs_dump/gen_trace.csv` の**先頭/末尾 各10行**を要約
    - **原因仮説 → 修正方針 → パッチ**（unified diff 形式）を提示
    - **クラウド上の作業領域を直接編集**して `./run.sh` を再実行（自動修正可）
-   - 各イテレーション完了時に **差分（unified diff）** と **最新スナップショットZIP** を提示  
-     （ZIP 例：`latest_sources.zip`。`zip -r` でプロジェクト直下を固めて出力）
 3. 成功したら：
    - `start/min/last/imprAbs/imprRel` を要約
    - 前進が小さい場合は、αグリッドの粒度・`dt` バックオフ・速度床/クランプ等の**改善提案**を継続
