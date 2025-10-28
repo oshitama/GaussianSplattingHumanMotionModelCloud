@@ -20,6 +20,14 @@
 #include <Color3.h>
 #include <Color4.h>
 
+using kh_vecmath::Point3f;
+using kh_vecmath::Vector3f;
+using kh_vecmath::Matrix3f;
+using kh_vecmath::Matrix4f;
+using kh_vecmath::Color3f;
+using kh_vecmath::Color4f;
+using kh_vecmath::Quat4f;
+
 // STL（Standard Template Library）を使用
 #include <vector>
 #include <string>

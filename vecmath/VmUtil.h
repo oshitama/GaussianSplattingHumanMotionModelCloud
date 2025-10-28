@@ -39,12 +39,12 @@
 #      include <iostream>
 #    endif
 #  else
-#    include <iostream.h>
+#    include <iostream>
 #  endif
 #  ifdef VM_INCLUDE_TOSTRING
 #     include <string>
 #       ifdef VM_USE_STRINGSTREAM
-#         include <stringstream>
+#         include <sstream>
 #         define VM_TOSTRING VM_STRING_STD::stringstream s; s << *this; return s.str();
 #       else
 #         ifdef _MSC_VER
