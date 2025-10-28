@@ -68,6 +68,9 @@ KeyframeMotion GSModel::Generate(const Posture& start,
     initlog.goal_stopability = (goal_sid >= 0) ? splats_[goal_sid].stopability : -1.0f;
 #endif
 
+    const float eps_progress = 1e-6f;
+    int stagnation_count = 0;
+    int force_goal_steps = 0;
     for (int step = 0; step < opt.max_steps; ++step) {
         // 終了条件（距離）
         float d_goal = FKDistance(cur, goal);
@@ -93,34 +96,120 @@ KeyframeMotion GSModel::Generate(const Posture& start,
 
         // 2つの候補への距離
         float d_model = FKDistance(cur, target_model);
-        float d_goal2 = d_goal; // 既に計算済み
 
-        // 目標混合
-        //   w = (1-s) でモデルフォロー、sでゴール吸引
-        //   1ステップの補間率 r = clamp( v*dt / distance )
-//        Posture p1, p2, next;
-        Posture p1( human_.GetSkeleton() ), p2( human_.GetSkeleton() ), next( human_.GetSkeleton() );
-
-        // モデル側への一歩
-//        float r_model = GSModel::Clamp( safe_div( GSModel::Clamp(v_ref, v_min, v_max) * dt, std::max(1e-6f, d_model) ), 0.0f, 1.0f );
         float v_used = GSModel::Clamp(v_ref, v_min, v_max);
         v_used = std::max(v_used, opt.v_floor_mps);
-        float r_model = GSModel::Clamp( safe_div( v_used * dt, std::max(1e-6f, d_model) ), 0.0f, 1.0f );
-        PostureInterpolation(cur, target_model, r_model, p1); // SimpleHumanの補間 :contentReference[oaicite:6]{index=6}
 
-        // ゴール側への一歩（停止可ほど強く寄せる）
-        // ゴールへの速度基準は v_ref を使用（簡易）
-//        float r_goal  = GSModel::Clamp( s * safe_div( GSModel::Clamp(v_ref, v_min, v_max) * dt, std::max(1e-6f, d_goal2) ), 0.0f, 1.0f );
-        float r_goal  = GSModel::Clamp( s * safe_div( v_used * dt, std::max(1e-6f, d_goal2) ), 0.0f, 1.0f );
-        PostureInterpolation(cur, goal, r_goal, p2);
+        auto format_float = [](float value) {
+            std::ostringstream oss;
+            oss << std::fixed << std::setprecision(4) << value;
+            return oss.str();
+        };
 
-        // 混合：停止可ならp2寄り、非停止ならp1寄り
-        float alpha = GSModel::Clamp( s, 0.0f, 1.0f );
-        PostureInterpolation(p1, p2, alpha, next);
+        bool force_goal_mode = (force_goal_steps > 0);
+        if (force_goal_mode) {
+            --force_goal_steps;
+        }
+
+        float dt_try = dt;
+        int dt_backoff = 0;
+        bool advanced = false;
+        Posture best_pose(human_.GetSkeleton());
+        float best_delta = -std::numeric_limits<float>::infinity();
+        float best_dist_goal = d_goal;
+        float best_step_norm = 0.0f;
+        float best_alpha = 0.0f;
+        std::string best_mode;
+        float best_dt = dt;
+        float best_r_model = 0.0f;
+        float best_r_goal = 0.0f;
+        std::vector<std::string> event_tags;
+
+        while (dt_backoff <= 2 && !advanced) {
+            float dt_local = dt_try;
+            float r_model_base = GSModel::Clamp( safe_div( v_used * dt_local, std::max(1e-6f, d_model) ), 0.0f, 1.0f );
+            float r_goal_base  = GSModel::Clamp( safe_div( v_used * dt_local, std::max(1e-6f, d_goal) ), 0.0f, 1.0f );
+
+            const float alpha_candidates[] = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
+
+            auto evaluate_alpha = [&](float alpha, const std::string& mode) {
+                Posture p_model(human_.GetSkeleton());
+                Posture p_goal(human_.GetSkeleton());
+                Posture candidate(human_.GetSkeleton());
+
+                float r_model = (1.0f - alpha) * r_model_base;
+                float r_goal  = alpha * r_goal_base;
+                PostureInterpolation(cur, target_model, r_model, p_model);
+                PostureInterpolation(cur, goal, r_goal, p_goal);
+                PostureInterpolation(p_model, p_goal, alpha, candidate);
+
+                float dist_goal_next = FKDistance(candidate, goal);
+                float delta_goal = d_goal - dist_goal_next;
+                float step_norm = FKDistance(cur, candidate);
+
+                if (delta_goal > best_delta + eps_progress) {
+                    best_delta = delta_goal;
+                    best_pose = candidate;
+                    best_dist_goal = dist_goal_next;
+                    best_step_norm = step_norm;
+                    best_alpha = alpha;
+                    best_mode = mode;
+                    best_dt = dt_local;
+                    best_r_model = r_model;
+                    best_r_goal = r_goal;
+                }
+            };
+
+            if (force_goal_mode) {
+                evaluate_alpha(1.0f, "force_goal");
+            } else {
+                for (float alpha_candidate : alpha_candidates) {
+                    evaluate_alpha(alpha_candidate, "grid");
+                }
+            }
+
+            if (best_delta > eps_progress) {
+                advanced = true;
+                break;
+            }
+
+            // フォールバック: α=1 で再評価
+            evaluate_alpha(1.0f, force_goal_mode ? "force_goal" : "fallback_goal");
+            if (best_delta > eps_progress) {
+                advanced = true;
+                if (!force_goal_mode && best_mode != "force_goal") {
+                    best_mode = "fallback_goal";
+                }
+                break;
+            }
+
+            dt_try *= 0.5f;
+            ++dt_backoff;
+        }
+
+        if (!advanced && best_delta <= eps_progress) {
+            break;
+        }
+
+        bool progressed = (best_delta > eps_progress);
+        int next_stagnation = progressed ? 0 : (stagnation_count + 1);
+        bool trigger_force = (!progressed && next_stagnation >= 3);
+
+        if (dt_backoff > 0) {
+            event_tags.push_back("dt=" + format_float(best_dt));
+        }
+        if (force_goal_mode) {
+            event_tags.push_back("force_goal");
+        } else if (best_mode == "fallback_goal") {
+            event_tags.push_back("fallback_goal");
+        }
+        if (trigger_force) {
+            event_tags.push_back("trigger_force_goal");
+        }
 
         // 前進
-        t += dt;
-        cur = next;
+        t += best_dt;
+        cur = best_pose;
         times.push_back(t);
         poses.push_back(cur);
 
@@ -129,18 +218,37 @@ KeyframeMotion GSModel::Generate(const Posture& start,
             StepLog L;
             L.step = step;
             L.splat_id = sid;
-            L.t = t;
-            L.dist_goal = d_goal;
-            L.stopability = s;
+            L.t_sec = t;
+            L.dist_goal = best_dist_goal;
+            L.delta_goal = best_delta;
+            L.alpha = best_alpha;
+            L.alpha_mode = best_mode;
+            L.step_norm = best_step_norm;
+            L.dt = best_dt;
             L.v_ref = v_ref;
-            L.v_used = v_used;
-            L.dist_model = d_model;
-            L.r_model = r_model;
-            L.r_goal  = r_goal;
-            L.alpha   = alpha;
+            L.v_min = v_min;
+            L.v_max = v_max;
+            L.used_speed = v_used;
+            L.v_floor = opt.v_floor_mps;
+            L.stopability = s;
+            L.r_model = best_r_model;
+            L.r_goal = best_r_goal;
+            if (!event_tags.empty()) {
+                std::ostringstream oss;
+                for (size_t i = 0; i < event_tags.size(); ++i) {
+                    if (i) oss << ';';
+                    oss << event_tags[i];
+                }
+                L.events = oss.str();
+            }
             logs.push_back(L);
         }
 #endif
+
+        if (trigger_force) {
+            force_goal_steps = 3;
+        }
+        stagnation_count = trigger_force ? 0 : next_stagnation;
 
         // ゴール到達判定（ゴールが非停止なら延長する可能性あり）
         if (d_goal <= goal_th && goal_stoppable) {
